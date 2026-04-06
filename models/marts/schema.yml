@@ -1,0 +1,89 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: "One row per unique customer, deduplicated by customer_unique_id"
+    columns:
+      - name: customer_id
+        description: "Unique customer identifier (customer_unique_id from source)"
+        tests:
+          - unique
+          - not_null
+      - name: total_orders
+        description: "Number of orders placed by this customer"
+        tests:
+          - not_null
+
+  - name: dim_products
+    description: "One row per product with English category name"
+    columns:
+      - name: product_id
+        description: "Unique product identifier"
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_sellers
+    description: "One row per seller"
+    columns:
+      - name: seller_id
+        description: "Unique seller identifier"
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_dates
+    description: "Calendar date dimension from 2016 to current date"
+    columns:
+      - name: date_day
+        description: "Calendar date"
+        tests:
+          - unique
+          - not_null
+
+  - name: fct_orders
+    description: "One row per order with payment totals, review scores, and delivery metrics"
+    columns:
+      - name: order_id
+        description: "Unique order identifier"
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+
+  - name: fct_order_items
+    description: "One row per item in an order — this is where revenue lives"
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+      - name: product_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_products')
+                field: product_id
+      - name: seller_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_sellers')
+                field: seller_id
+
+  - name: fct_order_payments
+    description: "One row per payment transaction"
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+      - name: payment_value
+        tests:
+          - not_null
