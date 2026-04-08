@@ -77,17 +77,3 @@ The Power BI dashboard provides a high-level overview of business performance:
 - BI development (Power BI)  
 - End-to-end analytics pipeline design  
 
----
-
-## Project Structure
-dbt_bnpl_analytics/
-├── models/
-│ ├── staging/
-│ └── marts/
-├── analyses/
-├── tests/
-├── dashboard/
-│ ├── tamara_dashboard.pbix
-│ └── screenshots/
-├── dbt_project.yml
-└── README.md
