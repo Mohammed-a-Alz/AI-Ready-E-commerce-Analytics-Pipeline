@@ -1,0 +1,19 @@
+sources:
+  - name: raw_ecommerce
+    tables:
+      - name: category_translation
+        description: hello
+      - name: customers
+        description: hello
+      - name: order_items
+        description: hello
+      - name: order_payments
+        description: heloo
+      - name: order_reviews
+        description: hello
+      - name: orders
+        description: hello
+      - name: products
+        description: hello
+      - name: sellers
+        description: hello
