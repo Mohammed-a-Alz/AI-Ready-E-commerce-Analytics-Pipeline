@@ -12,7 +12,7 @@ renamed as (
         order_id,
 
         -- review content
-        review_score,
+        cast(review_score as int64) as review_score,
         review_comment_title,
         review_comment_message,
 
