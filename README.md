@@ -1,74 +1,150 @@
 # E-commerce Analytics Pipeline
 
 ## Overview
-This project builds an end-to-end analytics pipeline for an e-commerce business.
 
-It transforms raw transactional data into a structured data warehouse using **dbt** and **BigQuery**, and exposes consistent, reusable business metrics through a **semantic layer** for reporting and analysis.
+An end-to-end analytics engineering project built on the Brazilian Olist e-commerce dataset. Raw transactional data is transformed into a production-grade data warehouse on BigQuery using dbt, with a centralized semantic layer (MetricFlow) exposing consistent, reusable business metrics across Power BI, Excel, and AI tools.
 
-The focus is on designing a **scalable analytics layer** where key metrics such as GMV, order volume, and average order value are well-defined, consistent, and easy to use across tools.
+The focus is not just on building a dashboard — it's on building a **data platform where definitions are consistent, quality is enforced, and both humans and AI tools can query the data reliably.**
 
 ---
 
 ## Architecture
 
-Raw Data → dbt (Staging) → dbt (Marts / Star Schema) → Semantic Layer (MetricFlow) → BigQuery → Power BI
+```
+Raw Data (BigQuery)
+    → dbt Staging      (clean, typed, renamed)
+    → dbt Marts        (star schema: facts + dimensions)
+    → Semantic Layer   (MetricFlow: metric definitions)
+    → Power BI / Excel / Claude AI
+```
 
-- **BigQuery**: Data warehouse  
-- **dbt**: Data transformation & modeling  
-- **MetricFlow (dbt Semantic Layer)**: Centralized metrics layer  
-- **Power BI**: Visualization layer  
+| Layer | Tool | Purpose |
+|---|---|---|
+| Data Warehouse | BigQuery | Storage and compute |
+| Transformation | dbt (Fusion) | Staging and mart models |
+| Metrics Layer | MetricFlow | Centralized metric definitions |
+| Visualization | Power BI | Dashboard and self-serve reporting |
+| AI Integration | dbt MCP + Claude | Natural language querying |
 
 ---
 
 ## Data Modeling
 
-The warehouse is designed using a **star schema**, separating facts and dimensions to preserve data granularity and enable flexible analysis.
+Designed using a **star schema** to separate facts from dimensions, preserve grain, and enable flexible, accurate aggregations.
 
 ### Fact Tables
-- `fct_orders` → one row per order  
-- `fct_order_items` → one row per item  
-- `fct_order_payments` → one row per payment  
+
+| Model | Grain |
+|---|---|
+| `fct_orders` | One row per order |
+| `fct_order_items` | One row per item within an order |
+| `fct_order_payments` | One row per payment transaction |
 
 ### Dimension Tables
-- `dim_customers`  
-- `dim_products`  
-- `dim_dates`  
+
+- `dim_customers` — deduplicated by `customer_unique_id`, includes order history and repeat customer flag
+- `dim_products` — includes English category name joined from translation table
+- `dim_dates` — calendar spine used by MetricFlow for time-based aggregations
+- `dim_sellers`
 
 ### Key Design Decisions
-- **Grain separation**: Orders, items, and payments are modeled separately to avoid duplication and ensure accurate aggregations  
-- **No fact-to-fact joins**: Prevents incorrect metrics and double counting  
-- **Layered modeling**:
-  - `staging` → cleaned and standardized raw data  
-  - `marts` → business-ready models  
+
+**Grain separation** — orders, items, and payments are modeled in separate fact tables. Joining them directly would cause fan-out and incorrect GMV figures. Each table answers a different business question at the right level of detail.
+
+**No fact-to-fact joins** — all joins go through dimension tables. This prevents double counting and keeps aggregations predictable.
+
+**Layered modeling**
+
+- `staging/` — one model per source table; cleans types, renames columns, no business logic
+- `marts/` — business-ready models; joins, aggregations, and derived fields live here
 
 ---
 
 ## Semantic Layer & Metrics
 
-A **dbt Semantic Layer (MetricFlow)** is used to define business metrics as a single source of truth.
+A **dbt Semantic Layer powered by MetricFlow** sits on top of the mart models and defines business metrics as a single source of truth. Any tool querying these metrics gets the same answer — no diverging definitions across dashboards or teams.
 
-### Example Metrics
-- **Total Revenue (GMV)**  
-- **Order Count**  
-- **Average Order Value (AOV)**  
-- **Average Installments**  
+### Metrics Defined
 
-### Benefits
-- Consistent metric definitions across tools  
-- Reduced duplication of SQL logic  
-- Enables self-serve analytics  
-- Provides a structured foundation for AI-assisted querying  
+| Metric | Definition |
+|---|---|
+| Total Revenue (GMV) | Sum of `payment_value` across all payments |
+| Order Count | Count distinct `order_id` |
+| Average Order Value (AOV) | Total Revenue ÷ Order Count |
+| Average Installments | Sum of installments ÷ Order Count |
+
+### Why This Matters
+
+Without a semantic layer, "revenue" might mean different things in different dashboards. MetricFlow ensures the calculation is defined once and reused everywhere — Power BI, Excel, and AI tools all query the same definition.
+
+---
+
+## AI Integration
+
+The semantic layer is connected to **Claude AI via the dbt MCP Server**, enabling natural language querying directly against governed metric definitions.
+
+Instead of writing SQL, you can ask:
+
+> *"What was total revenue by payment type last month?"*
+>
+> *"Which product category had the highest AOV in Q1?"*
+
+Claude queries the semantic layer and returns answers that are validated against the source-of-truth metric definitions — not hallucinated SQL guesses against raw tables.
+
+This demonstrates what **AI-ready data infrastructure** looks like in practice: clean grain, documented definitions, and a governed access layer that AI tools can use reliably.
+
+### Consistency Across Tools
+
+The same metric — **total revenue by payment type** — queried across three different tools, returning identical results from a single semantic layer definition.
+
+**Claude AI (via dbt MCP)**
+
+![Claude query result](screenshots/claude_revenue_by_payment_type.PNG)
+
+**Power BI (DirectQuery)**
+
+![Power BI result](screenshots/powerbi_revenue_by_payment_type.PNG)
+
+**Excel / Google Sheets (dbt Query Builder)**
+
+| | |
+|---|---|
+| ![dbt Query Builder](screenshots/sheetsui_revenue_by_payment_type.PNG) | ![Excel result](screenshots/sheets_revenue_by_payment_type.PNG) |
+
+> Same question. Same numbers. Three tools. One semantic layer definition.
+
+---
+
+## Data Quality
+
+dbt tests are applied across all staging and mart models to catch issues before they reach reporting.
+
+### Tests Applied
+
+| Test | Applied To |
+|---|---|
+| `unique` | All primary keys |
+| `not_null` | All primary and foreign keys |
+| `accepted_values` | `order_status`, `payment_type` |
+| `relationships` | Foreign keys across models |
+
+### Deployment
+
+Models and tests run through a **production dbt Cloud job** triggered on the main branch. Development follows a **Git branch workflow** — changes are built and tested on a dev schema before merging to main and promoting to production.
 
 ---
 
 ## Dashboard
 
-The Power BI dashboard provides a high-level overview of business performance:
+The Power BI dashboard connects to the semantic layer via **DirectQuery**, ensuring numbers always reflect live, governed metric definitions.
 
-- GMV, order volume, average order value, average installments  
-- Revenue trends with month-over-month comparison  
-- Top product categories by revenue  
-- Payment method distribution  
+**KPIs:**
+- GMV, Order Count, AOV, Average Installments (with month-over-month comparison)
+
+**Charts:**
+- Revenue trend over time
+- Top product categories by revenue
+- Payment method distribution
 
 ![Dashboard](dashboard/screenshots/dashboard.PNG)
 
@@ -76,20 +152,31 @@ The Power BI dashboard provides a high-level overview of business performance:
 
 ## Tech Stack
 
-- **Data Warehouse**: BigQuery  
-- **Transformation**: dbt (Fusion)  
-- **Semantic Layer**: MetricFlow  
-- **Visualization**: Power BI  
-- **Languages**: SQL  
+| Tool | Version / Notes |
+|---|---|
+| BigQuery | Google Cloud |
+| dbt | Fusion (latest) |
+| MetricFlow | dbt Semantic Layer |
+| Power BI | DirectQuery mode |
+| Python | Data exploration (Pandas) |
+| Git / GitHub | Version control + branch workflow |
 
 ---
 
-## Key Skills Demonstrated
+## What I Learned
 
-- Data modeling (Star Schema, Fact & Dimension design)  
-- Analytics engineering (dbt, modular transformations, layering)  
-- Semantic layer & metrics design  
-- SQL (BigQuery)  
-- Data transformation & validation  
-- BI development (Power BI)  
+The hardest part wasn't the SQL — it was the **semantic layer setup**. dbt Fusion uses a different YAML spec than classic dbt, and getting `agg_time_dimension`, entity definitions, and metric references correct took significant iteration. The payoff was real though: once the semantic layer was working, Power BI, Excel, and Claude AI all queried the same definitions without any additional SQL.
 
+The other key lesson was **data quality as a discipline**, not an afterthought. Running `dbt test` in production caught real issues in the Olist dataset (duplicate review IDs, type mismatches) that would have silently corrupted metrics downstream.
+
+---
+
+## Skills Demonstrated
+
+- Analytics engineering (dbt, modular SQL, staging/mart layering)
+- Data modeling (Star Schema, grain design, fact & dimension tables)
+- Semantic layer & metric definition (MetricFlow)
+- Data quality testing (dbt generic tests, production job deployment)
+- AI-ready data product design (governed metrics queryable by AI)
+- BI development (Power BI DirectQuery, semantic layer connection)
+- Version control & deployment workflow (Git, dbt Cloud)
