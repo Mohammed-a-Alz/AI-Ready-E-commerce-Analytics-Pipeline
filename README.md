@@ -178,3 +178,9 @@ The other key lesson was **data quality as a discipline**, not an afterthought. 
 - AI-ready data product design (governed metrics queryable by AI)
 - BI development (Power BI DirectQuery, semantic layer connection)
 - Version control & deployment workflow (Git, dbt Cloud)
+
+---
+
+*Author: Mohammed Alzahrani | [LinkedIn](https://linkedin.com/in/mohammedalz-)*
+
+  
