@@ -4,10 +4,13 @@
 
 An end-to-end analytics engineering project built on the Brazilian Olist e-commerce dataset. Raw transactional data is transformed into a production-grade data warehouse on BigQuery using dbt, with a centralized semantic layer (MetricFlow) exposing consistent, reusable business metrics across Power BI, Excel, and AI tools.
 
-The focus is not just on building a dashboard — it's on building a **data platform where definitions are consistent, quality is enforced, and both humans and AI tools can query the data reliably.**
+The focus is not just on building a dashboard — it's on building a **data product where definitions are consistent, quality is enforced, and both humans and AI tools can query the data reliably.**
 
 ---
-
+> **This project has been rebuilt and extended as [Olistv2](https://github.com/Mohammed-a-Alz/Olistv2)** — migrated to Snowflake, 3-layer architecture (staging → intermediate → marts), SCD Type 2 slowly changing dimensions, dbt model contracts, CI/CD with isolated dev/prod schemas, and 16 governed metrics across 3 fact tables.
+> 
+> This repo remains as the **v1 showcase** — dashboard screenshots, semantic layer consistency proof (Claude, Power BI, Excel returning identical results), and AI integration demos are documented here.
+---
 ## Dashboard
 
 **KPIs:**
